@@ -157,7 +157,6 @@ def retrieve_all_Dicomimages(VNCimages_folder_path, folder_mhd_images, winsoriza
 
 
 
-
 def calcification_detection(image_array, intensity_threshold, pixel_size, area_threshold=0.5):
     """
     Function to segment the calcifications in the "TNC" images.
@@ -169,28 +168,27 @@ def calcification_detection(image_array, intensity_threshold, pixel_size, area_t
 
     # Connected Component Analysis
     labeled_array, num_features = ndimage.label(thresholded_image)
+    # print(num_features)
+
+    comp_image = np.zeros_like(thresholded_image)
+
     # Avoid errors in case no values above the intensity threshold are found
     if num_features !=0:
-        component_sizes = ndimage.sum(thresholded_image, labeled_array, range(1, num_features + 1))    
-        largest_component_label = np.argmax(component_sizes) + 1
-        largest_component = (labeled_array == largest_component_label)
-
-        # Since the threshold for the area is in 2D we have to study slice by slice
-        for slice_index in range(largest_component.shape[0]):
-            largest_component_size_slice = np.sum(largest_component[slice_index,:,:])
-            area = pixel_size[1]*pixel_size[2]*largest_component_size_slice
-        
-            if area < area_threshold:
-                largest_component[slice_index,:,:]=np.zeros_like(thresholded_image[slice_index,:,:])
     
-    else:
-        largest_component=np.zeros_like(thresholded_image)
+        for comp_label in range(1, num_features + 1):
+            component  = (labeled_array == comp_label)
+
+            # Since the threshold for the area is in 2D we have to study slice by slice
+            for slice_index in range(component.shape[0]):
+                component_size_slice = np.sum(component[slice_index,:,:])
+                area = pixel_size[1]*pixel_size[2]*component_size_slice
+            
+                if area >= area_threshold:
+                    comp_image[slice_index,:,:] = component[slice_index,:,:]         
     
-    largest_component_uint8 = largest_component.astype(np.uint8) * 255
+    comp_image = comp_image.astype(np.uint8) * 255
 
-    return largest_component_uint8
-
-
+    return comp_image
 
 
 def retrieve_all_MHDimages(folder_mhd_images):
